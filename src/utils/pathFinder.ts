@@ -24,7 +24,8 @@ const isLetter = (char: string) => /[A-Z]/.test(char);
 
 export const followPath = (map: string[][]): PathResult => {
   let position: Position;
-  let direction: Direction | null = null;
+  let direction: Direction = "RIGHT";  // Default direction
+  const visitedPositions = new Set<string>(); // Track visited positions to prevent infinite loops
 
   const rows = map.length;
   const cols = map.reduce((max, row) => Math.max(max, row.length), 0);
@@ -64,10 +65,16 @@ export const followPath = (map: string[][]): PathResult => {
   const pathAsCharacters: string[] = [];
 
   position = findStartPosition();
-  direction = "RIGHT";
 
   while (true) {
     const currentChar = getCharAtPosition(position);
+    const positionKey = `${position.row},${position.col}`;
+
+    if (visitedPositions.has(positionKey)) {
+      throw new InvalidMapError("Infinite loop detected");
+    }
+
+    visitedPositions.add(positionKey);
 
     if (!isValidDirection(currentChar) && currentChar !== "x") {
       throw new InvalidMapError("Invalid character on the map");
@@ -87,18 +94,13 @@ export const followPath = (map: string[][]): PathResult => {
     let nextPos = nextPosition(position, direction);
     let nextChar = getCharAtPosition(nextPos);
 
-    if (nextChar === " ") {
-      // Try changing direction if possible
-      const possibleDirections: Direction[] = [
-        "UP",
-        "DOWN",
-        "LEFT",
-        "RIGHT",
-      ] as Direction[];
+    if (nextChar === " " || visitedPositions.has(`${nextPos.row},${nextPos.col}`)) {
+      const possibleDirections: Direction[] = ["UP", "DOWN", "LEFT", "RIGHT"];
       const validDirections = possibleDirections.filter(
         (dir) =>
           dir !== direction &&
-          getCharAtPosition(nextPosition(position, dir)) !== " "
+          getCharAtPosition(nextPosition(position, dir)) !== " " &&
+          !visitedPositions.has(`${nextPosition(position, dir).row},${nextPosition(position, dir).col}`)
       );
 
       if (validDirections.length === 1) {
@@ -110,7 +112,7 @@ export const followPath = (map: string[][]): PathResult => {
       }
     }
 
-    if (nextChar === " ") {
+    if (nextChar === " " || visitedPositions.has(`${nextPos.row},${nextPos.col}`)) {
       throw new InvalidMapError("Broken path detected");
     }
 
